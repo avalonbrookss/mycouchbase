@@ -13,7 +13,7 @@ plugins {
 }
 
 application {
-	mainClassName = 'MyCouch.MyCouch'
+	mainClassName = 'MyCouchbase.MyCouchbase'
 }
 
 
