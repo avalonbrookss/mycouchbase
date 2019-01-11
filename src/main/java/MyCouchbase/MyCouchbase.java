@@ -29,47 +29,104 @@ public class MyCouchbase {
 						"WHERE addr.address_id=251;")
 		);
 		String addressArg = "'" + addrArgResponse.allRows().get(0).value().get("street").toString() + "'";
-
-		// 1. N1ql Query for specific address 
-		spacerRows("Cardholder by their ADDRESS \n \t \t searching for street = " + addressArg);
-		LocalDateTime time1 = LocalDateTime.now();
-		N1qlQueryResult addressResult = bucket.query(
+		
+		
+		//--------------------------------------------------------------------------->>
+		//TIMESTAMP QUERY SECTION. (begin)
+		
+		LocalDateTime time21 = LocalDateTime.now();
+		String timestampQuery = "SELECT ARRAY s FOR s IN amer.customer_charges " +
+							 "WHEN s.charge_timestamp BETWEEN '2018-10-04 %' AND '2018-10-05 %' END AS cust_charge " +
+								 "FROM american AS amer " +
+									 "WHERE ANY a in customer_charges " +
+											 "SATISFIES a.charge_timestamp BETWEEN '2018-10-04 %' AND '2018-10-05 %' END " +
+												 "ORDER BY a.charge_id ASC;";
+		N1qlQueryResult timestampResult = bucket.query(
+			N1qlQuery.simple(timestampQuery)
+		);
+		LocalDateTime time3 = LocalDateTime.now();
+				
+		// 4. Create Index for street to expedite address Query for #5.
+		String indexQuery = "CREATE INDEX idx_time " +
+			"ON `american`(ALL DISTINCT ARRAY b.charge_timestamp FOR b IN customer_charges END);";
+		bucket.query(
+			N1qlQuery.simple(indexQuery)
+		);
+		LocalDateTime timeIndex1 = LocalDateTime.now();
+		N1qlQueryResult timestampResultIndex = bucket.query(
+			N1qlQuery.simple(timestampQuery)
+		);
+		LocalDateTime timeIndex2 = LocalDateTime.now();
+		
+		long originalTime = calculateTimeElapsed(timeIndex1, timeIndex2);
+		long indexedTime = calculateTimeElapsed(time21, time3);
+		System.out.println();
+		System.out.println();
+		System.out.println();
+		System.out.println();
+		System.out.println("Query searching for customer charges between 2018-10-01 TO 2018-10-05 \n" +
+			"\nTime for query with no index: " + originalTime + "ms \n" +
+				"Time for query WITH index: " + indexedTime + "ms");
+				
+		bucket.query(
+			N1qlQuery.simple("DROP INDEX `american`.`idx_time`;")
+		);
+		
+		//TIMESTAMP QUERY SECTION  (end)
+		//--------------------------------------------------------------------------->>
+		
+		
+		//--------------------------------------------------------------------------->>
+		//ADDRESS QUERY SECTION. (begin)
+		LocalDateTime timeNoIndexAddress1 = LocalDateTime.now();
+		bucket.query(
 			N1qlQuery.simple("SELECT * " + 
+				"FROM american AS cardholder " +
+					"WHERE ANY cardAddress " +
+						"IN cardholder.home_address " +
+							"SATISFIES cardAddress.street=" + addressArg + " END;")
+								);
+		LocalDateTime timeNoIndexAddress2 = LocalDateTime.now();
+		
+		
+		// 5. Address Query *with* INDEX
+		String indexStreetQuery = "CREATE INDEX idx_street " +
+			 "ON `american` (ALL DISTINCT ARRAY h.street FOR h IN home_address END);";
+		bucket.query(
+					N1qlQuery.simple(indexStreetQuery)
+				);
+		
+		LocalDateTime timeWithIndexStreet1 = LocalDateTime.now();
+		N1qlQueryResult addressResultIndexed = bucket.query(
+			N1qlQuery.simple("SELECT last_name " + 
 				"FROM american AS cardholder " +
 				"WHERE ANY cardAddress " +
 				"IN cardholder.home_address " +
 				"SATISFIES cardAddress.street=" + addressArg + " END;")
 		);
-		LocalDateTime time2 = LocalDateTime.now();
-		printRows(addressResult);
-		printTimeElapsed(time1, time2);
+		LocalDateTime timeWithIndexStreet2 = LocalDateTime.now();
+
+		System.out.println();
+		System.out.println();
+		System.out.println("Query searching for resident at: " + addressArg);
+		System.out.println();
+		System.out.println("Time for address search including index: " + 
+			 calculateTimeElapsed(timeWithIndexStreet1, timeWithIndexStreet2) + "ms");
+		System.out.println("Time for address search with NO index: " + 
+			calculateTimeElapsed(timeNoIndexAddress1, timeNoIndexAddress2) + "ms");
 		
-		
-		// 2. N1ql Query for elements within Date range 
-		spacerRows("TIMESTAMP within Date Range: \n \t \t  2018-10-01 TO 2018-10-05");
-		LocalDateTime time21 = LocalDateTime.now();
-		N1qlQueryResult timestampResult = bucket.query(
-			N1qlQuery.simple("SELECT single_charge " +
-							 "FROM american AS cardholder " +
-								 "UNNEST cardholder.customer_charges AS single_charge " +
-									 "WHERE single_charge.charge_timestamp BETWEEN '2018-10-01 %' AND '2018-10-05' " +
-											 "ORDER BY single_charge.charge_id ASC;")
+		bucket.query(
+			N1qlQuery.simple("DROP INDEX `american`.`idx_street`;")
 		);
-		LocalDateTime time3 = LocalDateTime.now();
-		printRows(timestampResult);
-		printTimeElapsed(time21, time3);
 		
-		
-		// 3. N1ql Query using parameterized function
-		// spacerRows("Parameterized Search");
-// 		LocalDateTime time31 = LocalDateTime.now();
-// 		N1qlQueryResult parameterizedResult = bucket.query(
-// 			N1qlQuery.parameterized("SELECT * FROM american WHERE email = $email;",
-// 					JsonObject.create().put("email", "Mina22@hotmail.com"))
-// 		);
-// 		LocalDateTime time4 = LocalDateTime.now();
-// 		printRows(parameterizedResult);
-// 		printTimeElapsed(time31, time4);
+	
+		//ADDRESS QUERY SECTION  (end)
+		//--------------------------------------------------------------------------->>
+		System.out.println();
+		System.out.println();
+		bucket.close();
+		// cluster disconnect below was taking ~4s to complete
+		// cluster.disconnect();
 		
 	}
 	
@@ -81,20 +138,8 @@ public class MyCouchbase {
 		}
 	}
 	
-	private static void printTimeElapsed(LocalDateTime start, LocalDateTime finish) {
-		System.out.println("##");
-		System.out.println(" \t [ Time elapsed for search: " + start.until(finish, ChronoUnit.MILLIS) + "ms ]");
-		System.out.println("##");
-		System.out.println("##");
-		System.out.println();
-	}
-	
-	private static void spacerRows(String customStr) {
-		System.out.println("**");
-		System.out.println("**");
-		System.out.println("**");
-		System.out.println("  \t ______Query for " + customStr + "______\t ");
-		System.out.println("**");
+	private static long calculateTimeElapsed(LocalDateTime start, LocalDateTime finish) {
+		return start.until(finish, ChronoUnit.MILLIS);
 	}
 
 }
