@@ -46,13 +46,13 @@ public class MyCouchbase {
 		
 		
 		// 2. N1ql Query for elements within Date range 
-		spacerRows("TIMESTAMP within Date Range: \n \t \t  2018-10-04 TO 2018-10-05");
+		spacerRows("TIMESTAMP within Date Range: \n \t \t  2018-10-01 TO 2018-10-05");
 		LocalDateTime time21 = LocalDateTime.now();
 		N1qlQueryResult timestampResult = bucket.query(
 			N1qlQuery.simple("SELECT single_charge " +
 							 "FROM american AS cardholder " +
 								 "UNNEST cardholder.customer_charges AS single_charge " +
-									 "WHERE single_charge.charge_timestamp BETWEEN '2018-10-04 %' AND '2018-10-05' " +
+									 "WHERE single_charge.charge_timestamp BETWEEN '2018-10-01 %' AND '2018-10-05' " +
 											 "ORDER BY single_charge.charge_id ASC;")
 		);
 		LocalDateTime time3 = LocalDateTime.now();
