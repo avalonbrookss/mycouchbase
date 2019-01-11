@@ -1,9 +1,12 @@
 # mycouchbase
 
-This sample project was used in conjunction with a local Couchbase server (6.0.0), containing a bucket named 'american'
-and a user: 'american' with password: 'password' with full admin priveleges. 
+This sample project was used in conjunction with a local Couchbase server (6.0.0)
 
-Using the 'finance.yaml' file in this repository, run the following command to produce a directory 'output' with sample JSON files to populate the 'american' bucket.
+Pre-requisites:
+1. Local Couchbase Server containing a bucket named 'american' and a user: 'american' with password: 'password' with appropriate priveleges. 
+2. FakeIt installed on local machine.
+
+To prepare to execute the main class, use the 'finance.yaml' file in this repository to generate mock data, run the following command to produce a directory 'output' with sample JSON files to populate the 'american' bucket.
 
 1. 'fakeit directory --count 3000 --verbose output finance.yaml'
 
