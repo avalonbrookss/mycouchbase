@@ -3,8 +3,10 @@
 This sample project was used in conjunction with a local Couchbase server (6.0.0)
 
 Pre-requisites:
-1. Local Couchbase Server containing a bucket named 'american' and a user: 'american' with password: 'password' with appropriate priveleges. 
-2. FakeIt installed on local machine.
+1. Local Couchbase Server installed with:
+ a) bucket named 'american'
+ b) user: 'american' password: 'password' (admin priveleges) 
+2. FakeIt installed.
 
 To prepare to execute the main class, use the 'finance.yaml' file in this repository to generate mock data, run the following command to produce a directory 'output' with sample JSON files to populate the 'american' bucket.
 
