@@ -12,6 +12,8 @@ plugins {
 	id 'application'
 }
 
+
+
 application {
 	mainClassName = 'MyCouchbase.MyCouchbase'
 }
@@ -31,7 +33,7 @@ dependencies {
     implementation 'com.google.guava:guava:26.0-jre'
 	
 	//couchbase
-	implementation 'com.couchbase.client:java-client:2.3.4'
+	implementation 'com.couchbase.client:java-client:2.7.2'
 
     // Use JUnit test framework
     testImplementation 'junit:junit:4.12'
