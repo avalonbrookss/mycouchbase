@@ -1,0 +1,114 @@
+name: finance
+type: object
+key: user_id
+data:
+  pre_run:  |
+    globals.user_counter = 0;
+    globals.address_id = 100;
+    globals.charge_id = 200;
+properties:
+  type:
+    type: string
+    data:
+      value: "customer"
+  user_id:
+    type: integer
+    description: user id
+    data:
+      build: ++globals.user_counter
+  first_name:
+    type: string
+    description: The users first name
+    data:
+      build: faker.name.firstName()
+  last_name:
+    type: string
+    description: The users last name
+    data:
+      build: faker.name.firstName()
+  email:
+    type: string
+    description: Cardholder email address
+    data:
+      build: faker.internet.email()
+  home_address:
+    type: array
+    items:
+      type: object
+      data:
+        min: 1
+        max: 2
+      properties:
+        address_id:
+          type: integer
+          data:
+            build: ++globals.address_id
+        street:
+          type: string
+          data:
+           build: faker.address.streetAddress()
+        city:
+          type: string
+          description: City for the address
+          data:
+            build: faker.address.city()
+        state:
+          type: string
+          data:
+            build: faker.address.state()
+        country:
+          type: string
+          description: Country of the address
+          data: 
+            value: "United States"
+        zipcode:
+          type: integer
+          description: Zipcode of the address
+          data:
+            build: faker.random.number({ 'min': 10000, 'max': 99999 })
+  customer_card:
+    type: object
+    properties:
+      account_number:
+        type: integer
+        description: A unique card value
+        data:
+          build: faker.random.number({ 'min': 1000000000000000, 'max': 9999999999999999 })
+      expiration_month:
+        type: integer
+        description: Month of the expiration date
+        data:
+          build: faker.random.number({ 'min': 1, 'max': 12 })
+      expiration_year:
+        type: integer
+        description: Year of the expiration date
+        data:
+          build: faker.random.number({ 'min': 2019, 'max': 2024 })
+      security_code:
+        type: integer
+        description: 3-digit security code 
+        data:
+          build: faker.random.number({ 'min': 100, 'max': 999 })
+  customer_charges:
+    type: array
+    items:
+      type: object
+      data:
+        min: 1
+        max: 3
+      properties:
+        charge_id:
+          type: integer
+          data:
+            build: ++globals.charge_id
+        charge_amount:
+          type: float
+          data:
+            build: chance.dollar({ min: 0, max: 145 }).slice(1)
+        charge_timestamp:
+          type: Date
+          description: Seconds from 1-1-1970
+          data:
+            build: new Date(faker.date.past())
+  
+  
