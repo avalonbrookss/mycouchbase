@@ -19,3 +19,5 @@ Next, to load these json files into the local couchbase bucket run the following
 Next, add primary index to the 'american' bucket via browser's Query console:
 
 3. 'CREATE PRIMARY INDEX ON american USING GSI;'
+
+4. cd into 'mycouchbase' directory and execute 'gradle run' command - results will output to console.
