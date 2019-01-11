@@ -1,4 +1,4 @@
-package MyCouch;
+package MyCouchbase;
 
 import org.junit.Test;
 import static org.junit.Assert.*;
