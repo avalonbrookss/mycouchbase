@@ -107,7 +107,7 @@ properties:
             build: chance.dollar({ min: 0, max: 145 }).slice(1)
         charge_timestamp:
           type: Date
-          description: Seconds from 1-1-1970
+          description: Dates that charges occurred.
           data:
             build: new Date(faker.date.past())
   
