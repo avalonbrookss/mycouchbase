@@ -44,6 +44,7 @@ public class MyCouchbase {
 		N1qlQueryResult timestampResult = bucket.query(
 			N1qlQuery.simple(timestampQuery)
 		);
+		int sizeOfResultNoIndex = timestampResult.allRows().size();
 		LocalDateTime time3 = LocalDateTime.now();
 				
 		// 4. Create Index for street to expedite address Query for #5.
@@ -56,6 +57,7 @@ public class MyCouchbase {
 		N1qlQueryResult timestampResultIndex = bucket.query(
 			N1qlQuery.simple(timestampQuery)
 		);
+		int resultSizeWithNewIndex = timestampResultIndex.allRows().size();
 		LocalDateTime timeIndex2 = LocalDateTime.now();
 		
 		long timeWithNewIndex = calculateTimeElapsed(timeIndex1, timeIndex2);
@@ -65,8 +67,12 @@ public class MyCouchbase {
 		System.out.println();
 		System.out.println();
 		System.out.println("Query searching for customer charges between 2018-10-01 TO 2018-10-05 \n" +
-			"\nTime for query with no index: " + timeBeforeIndex + "ms \n" +
-				"Time for query WITH index: " + timeWithNewIndex + "ms");
+			"\nQuery with no index: \n" + 
+				"execution time: " + timeBeforeIndex + "ms \n" +
+				"result size: " + sizeOfResultNoIndex + "\n" +
+			"\nQuery WITH index: \n" + 
+				"execution time: " + timeWithNewIndex + "ms \n" + 
+				"result size: " + resultSizeWithNewIndex);
 				
 		bucket.query(
 			N1qlQuery.simple("DROP INDEX `american`.`idx_time`;")
@@ -79,7 +85,7 @@ public class MyCouchbase {
 		//--------------------------------------------------------------------------->>
 		//ADDRESS QUERY SECTION. (begin)
 		LocalDateTime timeNoIndexAddress1 = LocalDateTime.now();
-		bucket.query(
+		N1qlQueryResult addressResultOriginal = bucket.query(
 			N1qlQuery.simple("SELECT * " + 
 				"FROM american AS cardholder " +
 					"WHERE ANY cardAddress " +
@@ -87,7 +93,7 @@ public class MyCouchbase {
 							"SATISFIES cardAddress.street=" + addressArg + " END;")
 								);
 		LocalDateTime timeNoIndexAddress2 = LocalDateTime.now();
-		
+		int originalResultSize = addressResultOriginal.allRows().size();
 		
 		// 5. Address Query *with* INDEX
 		String indexStreetQuery = "CREATE INDEX idx_street " +
@@ -105,15 +111,17 @@ public class MyCouchbase {
 				"SATISFIES cardAddress.street=" + addressArg + " END;")
 		);
 		LocalDateTime timeWithIndexStreet2 = LocalDateTime.now();
-
+		int indexedResultSize = addressResultIndexed.allRows().size();
 		System.out.println();
 		System.out.println();
 		System.out.println("Query searching for resident at: " + addressArg);
 		System.out.println();
-		System.out.println("Time for address search with NO index: " + 
-			calculateTimeElapsed(timeNoIndexAddress1, timeNoIndexAddress2) + "ms");
-		System.out.println("Time for address search WITH index: " + 
-			 calculateTimeElapsed(timeWithIndexStreet1, timeWithIndexStreet2) + "ms");
+		System.out.println("Address query with NO index: \n" + 
+			"execution time:" + calculateTimeElapsed(timeNoIndexAddress1, timeNoIndexAddress2) + "ms \n" +
+				"result size: " + originalResultSize + "\n");
+		System.out.println("Address query WITH index: \n" + 
+			 "execution time: " + calculateTimeElapsed(timeWithIndexStreet1, timeWithIndexStreet2) + "ms \n" + 
+				 "result size: " + indexedResultSize);
 		bucket.query(
 			N1qlQuery.simple("DROP INDEX `american`.`idx_street`;")
 		);
