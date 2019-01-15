@@ -58,15 +58,15 @@ public class MyCouchbase {
 		);
 		LocalDateTime timeIndex2 = LocalDateTime.now();
 		
-		long originalTime = calculateTimeElapsed(timeIndex1, timeIndex2);
-		long indexedTime = calculateTimeElapsed(time21, time3);
+		long timeWithNewIndex = calculateTimeElapsed(timeIndex1, timeIndex2);
+		long timeBeforeIndex = calculateTimeElapsed(time21, time3);
 		System.out.println();
 		System.out.println();
 		System.out.println();
 		System.out.println();
 		System.out.println("Query searching for customer charges between 2018-10-01 TO 2018-10-05 \n" +
-			"\nTime for query with no index: " + originalTime + "ms \n" +
-				"Time for query WITH index: " + indexedTime + "ms");
+			"\nTime for query with no index: " + timeBeforeIndex + "ms \n" +
+				"Time for query WITH index: " + timeWithNewIndex + "ms");
 				
 		bucket.query(
 			N1qlQuery.simple("DROP INDEX `american`.`idx_time`;")
@@ -110,11 +110,10 @@ public class MyCouchbase {
 		System.out.println();
 		System.out.println("Query searching for resident at: " + addressArg);
 		System.out.println();
-		System.out.println("Time for address search including index: " + 
-			 calculateTimeElapsed(timeWithIndexStreet1, timeWithIndexStreet2) + "ms");
 		System.out.println("Time for address search with NO index: " + 
 			calculateTimeElapsed(timeNoIndexAddress1, timeNoIndexAddress2) + "ms");
-		
+		System.out.println("Time for address search WITH index: " + 
+			 calculateTimeElapsed(timeWithIndexStreet1, timeWithIndexStreet2) + "ms");
 		bucket.query(
 			N1qlQuery.simple("DROP INDEX `american`.`idx_street`;")
 		);
