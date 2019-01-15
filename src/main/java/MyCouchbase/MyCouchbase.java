@@ -77,11 +77,8 @@ public class MyCouchbase {
 		
 		
 		
-		System.out.println();
-		System.out.println();
-		System.out.println();
-		System.out.println();
-		System.out.println("Query searching for customer charges within 24 hours of " + timestampStr + " \n" +
+		
+		System.out.println("\n\n\n\n\nQuery searching for customer charges within 24 hours of " + timestampStr + " \n" +
 			"\nQuery with no index: \n" + 
 				"execution time: " + timeBeforeIndex + "ms \n" +
 				"result size: " + sizeOfResultNoIndex + "\n" +
@@ -129,12 +126,8 @@ public class MyCouchbase {
 		int indexedResultSize = addressResultIndexed.allRows().size();
 		
 		
-		
-		System.out.println();
-		System.out.println();
-		System.out.println("Query searching for resident at: " + addressArg);
-		System.out.println();
-		System.out.println("Address query with NO index: \n" + 
+		System.out.println("\n\n\nQuery searching for resident at: " + addressArg);
+		System.out.println("\nAddress query with NO index: \n" + 
 			"execution time: " + calculateTimeElapsed(timeNoIndexAddress1, timeNoIndexAddress2) + "ms \n" +
 				"result size: " + originalResultSize + "\n");
 		System.out.println("Address query WITH index: \n" + 
