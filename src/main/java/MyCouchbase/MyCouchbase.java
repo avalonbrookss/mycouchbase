@@ -30,17 +30,28 @@ public class MyCouchbase {
 		);
 		String addressArg = "'" + addrArgResponse.allRows().get(0).value().get("street").toString() + "'";
 		
+		//Retrieve a valid timestamp from one of the customers' charges
+		N1qlQueryResult timestampArgQueryResult = bucket.query(
+			N1qlQuery.simple("SELECT each_charge.charge_timestamp " +
+								"FROM american " +
+									"UNNEST customer_charges AS each_charge " +
+										"LIMIT 1;")
+		);
+		String timestampStr = "'" + timestampArgQueryResult.allRows().get(0).value().get("charge_timestamp").toString() + "'";
+		
 		
 		//--------------------------------------------------------------------------->>
 		//TIMESTAMP QUERY SECTION. (begin)
 		
-		LocalDateTime time21 = LocalDateTime.now();
 		String timestampQuery = "SELECT ARRAY s FOR s IN amer.customer_charges " +
-							 "WHEN s.charge_timestamp BETWEEN '2018-10-04 %' AND '2018-10-05 %' END AS cust_charge " +
+							 "WHEN s.charge_timestamp BETWEEN date_add_str(" + timestampStr + ", -1, 'day') AND date_add_str(" + timestampStr + ", 1, 'day') END AS cust_charge " +
 								 "FROM american AS amer " +
 									 "WHERE ANY a in customer_charges " +
-											 "SATISFIES a.charge_timestamp BETWEEN '2018-10-04 %' AND '2018-10-05 %' END " +
+											 "SATISFIES a.charge_timestamp BETWEEN date_add_str(" + timestampStr + ", -1, 'day') AND date_add_str(" + timestampStr + ", 1, 'day') END " +
 												 "ORDER BY a.charge_id ASC;";
+		
+		System.out.println(timestampQuery);
+		LocalDateTime time21 = LocalDateTime.now();
 		N1qlQueryResult timestampResult = bucket.query(
 			N1qlQuery.simple(timestampQuery)
 		);
@@ -62,11 +73,15 @@ public class MyCouchbase {
 		
 		long timeWithNewIndex = calculateTimeElapsed(timeIndex1, timeIndex2);
 		long timeBeforeIndex = calculateTimeElapsed(time21, time3);
+		
+		
+		
+		
 		System.out.println();
 		System.out.println();
 		System.out.println();
 		System.out.println();
-		System.out.println("Query searching for customer charges between 2018-10-01 TO 2018-10-05 \n" +
+		System.out.println("Query searching for customer charges within 24 hours of " + timestampStr + " \n" +
 			"\nQuery with no index: \n" + 
 				"execution time: " + timeBeforeIndex + "ms \n" +
 				"result size: " + sizeOfResultNoIndex + "\n" +
@@ -112,12 +127,15 @@ public class MyCouchbase {
 		);
 		LocalDateTime timeWithIndexStreet2 = LocalDateTime.now();
 		int indexedResultSize = addressResultIndexed.allRows().size();
+		
+		
+		
 		System.out.println();
 		System.out.println();
 		System.out.println("Query searching for resident at: " + addressArg);
 		System.out.println();
 		System.out.println("Address query with NO index: \n" + 
-			"execution time:" + calculateTimeElapsed(timeNoIndexAddress1, timeNoIndexAddress2) + "ms \n" +
+			"execution time: " + calculateTimeElapsed(timeNoIndexAddress1, timeNoIndexAddress2) + "ms \n" +
 				"result size: " + originalResultSize + "\n");
 		System.out.println("Address query WITH index: \n" + 
 			 "execution time: " + calculateTimeElapsed(timeWithIndexStreet1, timeWithIndexStreet2) + "ms \n" + 
