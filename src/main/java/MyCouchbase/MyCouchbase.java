@@ -44,13 +44,14 @@ public class MyCouchbase {
 		//TIMESTAMP QUERY SECTION. (begin)
 		
 		String timestampQuery = "SELECT ARRAY s FOR s IN amer.customer_charges " +
-							 "WHEN s.charge_timestamp BETWEEN date_add_str(" + timestampStr + ", -1, 'day') AND date_add_str(" + timestampStr + ", 1, 'day') END AS cust_charge " +
+							 "WHEN s.charge_timestamp BETWEEN date_add_str(" + timestampStr + ", -1, 'day') AND " +
+								 "date_add_str(" + timestampStr + ", 1, 'day') END AS cust_charge " +
 								 "FROM american AS amer " +
-									 "WHERE ANY a in customer_charges " +
-											 "SATISFIES a.charge_timestamp BETWEEN date_add_str(" + timestampStr + ", -1, 'day') AND date_add_str(" + timestampStr + ", 1, 'day') END " +
-												 "ORDER BY a.charge_id ASC;";
+								 "WHERE ANY a in customer_charges " +
+								 "SATISFIES a.charge_timestamp BETWEEN date_add_str(" + timestampStr + ", -1, 'day') AND " +
+								 "date_add_str(" + timestampStr + ", 1, 'day') END " + 
+									 "AND type = 'customer';";
 		
-		System.out.println(timestampQuery);
 		LocalDateTime time21 = LocalDateTime.now();
 		N1qlQueryResult timestampResult = bucket.query(
 			N1qlQuery.simple(timestampQuery)
@@ -60,7 +61,8 @@ public class MyCouchbase {
 				
 		// 4. Create Index for street to expedite address Query for #5.
 		String indexQuery = "CREATE INDEX idx_time " +
-			"ON `american`(ALL DISTINCT ARRAY b.charge_timestamp FOR b IN customer_charges END);";
+			"ON `american`(ALL DISTINCT ARRAY b.charge_timestamp FOR b IN customer_charges END) " +
+				"WHERE type = 'customer';";
 		bucket.query(
 			N1qlQuery.simple(indexQuery)
 		);
@@ -74,8 +76,36 @@ public class MyCouchbase {
 		long timeWithNewIndex = calculateTimeElapsed(timeIndex1, timeIndex2);
 		long timeBeforeIndex = calculateTimeElapsed(time21, time3);
 		
+		N1qlQueryResult explainTimeStamp = bucket.query(
+			N1qlQuery.simple("EXPLAIN " + timestampQuery)
+		);
 		
 		
+		bucket.query(
+			N1qlQuery.simple("DROP INDEX `american`.`idx_time`;")
+		);
+		// Create covering index - show improved performance **
+		String coveringIndexQuery = "CREATE INDEX idx_time_and_amount " +
+			"ON `american`(ALL ARRAY b.charge_timestamp FOR b IN customer_charges END, customer_charges) " +
+				"WHERE type = 'customer';";
+		bucket.query(
+			N1qlQuery.simple(coveringIndexQuery)
+		);
+		
+		// Re-run timestamp query
+		LocalDateTime timeCoveringIndex = LocalDateTime.now();
+		N1qlQueryResult timestampResultCoveringIndex = bucket.query(
+			N1qlQuery.simple(timestampQuery)
+		);
+		int resultSizeWithCoveringIndex = timestampResultCoveringIndex.allRows().size();
+		LocalDateTime timeCoveringIndex2 = LocalDateTime.now(); 
+		long timeWithCoveringIndex = calculateTimeElapsed(timeCoveringIndex, timeCoveringIndex2);
+		N1qlQueryResult explainTimeStampCoveringIndex = bucket.query(
+			N1qlQuery.simple("EXPLAIN " + timestampQuery)
+		);
+		bucket.query(
+			N1qlQuery.simple("DROP INDEX `american`.`idx_time_and_amount`;")
+		);
 		
 		
 		System.out.println("\n\n\n\n\nQuery searching for customer charges within 24 hours of " + timestampStr + " \n" +
@@ -85,24 +115,36 @@ public class MyCouchbase {
 			"\nQuery WITH index: \n" + 
 				"execution time: " + timeWithNewIndex + "ms \n" + 
 				"result size: " + resultSizeWithNewIndex);
-				
-		bucket.query(
-			N1qlQuery.simple("DROP INDEX `american`.`idx_time`;")
-		);
+		System.out.println("\nThe following is the EXPLAIN for the indexed timestamp query:\n\n");
+		printRows(explainTimeStamp);
+		System.out.println("\n\n\n");
+		System.out.println("Timestamp query with covering index;\n" +
+			"execution time: " + timeWithCoveringIndex + "ms\n" +
+				"result size: " + resultSizeWithCoveringIndex + "\n\n");
+		System.out.println("\nThe following is the EXPLAIN for the Covering indexed timestamp query:\n\n");
+		printRows(explainTimeStampCoveringIndex);
+		System.out.println("\n\n\n");
 		
+		
+		
+		
+			
 		//TIMESTAMP QUERY SECTION  (end)
 		//--------------------------------------------------------------------------->>
 		
 		
 		//--------------------------------------------------------------------------->>
-		//ADDRESS QUERY SECTION. (begin)
-		LocalDateTime timeNoIndexAddress1 = LocalDateTime.now();
-		N1qlQueryResult addressResultOriginal = bucket.query(
-			N1qlQuery.simple("SELECT * " + 
+		String addressQuery = "SELECT * " + 
 				"FROM american AS cardholder " +
 					"WHERE ANY cardAddress " +
 						"IN cardholder.home_address " +
-							"SATISFIES cardAddress.street=" + addressArg + " END;")
+							"SATISFIES cardAddress.street=" + addressArg + " END " + 
+								"AND `type` = 'customer';";
+		
+		//ADDRESS QUERY SECTION. (begin)
+		LocalDateTime timeNoIndexAddress1 = LocalDateTime.now();
+		N1qlQueryResult addressResultOriginal = bucket.query(
+			N1qlQuery.simple(addressQuery)
 								);
 		LocalDateTime timeNoIndexAddress2 = LocalDateTime.now();
 		int originalResultSize = addressResultOriginal.allRows().size();
@@ -113,14 +155,12 @@ public class MyCouchbase {
 		bucket.query(
 					N1qlQuery.simple(indexStreetQuery)
 				);
-		
+		N1qlQueryResult explainAddressCoveringIndex = bucket.query(
+			N1qlQuery.simple("EXPLAIN " + addressQuery)
+		);
 		LocalDateTime timeWithIndexStreet1 = LocalDateTime.now();
 		N1qlQueryResult addressResultIndexed = bucket.query(
-			N1qlQuery.simple("SELECT last_name " + 
-				"FROM american AS cardholder " +
-				"WHERE ANY cardAddress " +
-				"IN cardholder.home_address " +
-				"SATISFIES cardAddress.street=" + addressArg + " END;")
+			N1qlQuery.simple(addressQuery)
 		);
 		LocalDateTime timeWithIndexStreet2 = LocalDateTime.now();
 		int indexedResultSize = addressResultIndexed.allRows().size();
@@ -133,6 +173,8 @@ public class MyCouchbase {
 		System.out.println("Address query WITH index: \n" + 
 			 "execution time: " + calculateTimeElapsed(timeWithIndexStreet1, timeWithIndexStreet2) + "ms \n" + 
 				 "result size: " + indexedResultSize);
+		System.out.println("\n\nEXPLAIN for ADDRESS INDEXED: \n");
+		printRows(explainAddressCoveringIndex);
 		bucket.query(
 			N1qlQuery.simple("DROP INDEX `american`.`idx_street`;")
 		);
@@ -145,6 +187,8 @@ public class MyCouchbase {
 		bucket.close();
 		// cluster disconnect below was taking ~4s to complete
 		// cluster.disconnect();
+		
+		
 		
 	}
 	
